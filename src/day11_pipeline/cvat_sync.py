@@ -98,6 +98,8 @@ def main() -> int:
                 print(f"Created task #{task.id} '{tname}' ({task.size} frames)")
 
             task.import_annotations("CVAT 1.1", filename=str(ann_zip))
+            if rb_zip.exists():
+                rb_zip.unlink()
             task.export_dataset("CVAT for images 1.1", filename=str(rb_zip), include_images=False)
 
             exp_counts = _count_cvat(ann_zip)

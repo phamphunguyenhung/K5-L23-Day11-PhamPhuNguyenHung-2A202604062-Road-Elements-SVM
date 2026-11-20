@@ -9,14 +9,18 @@ from road_lab.cvat_xml import Shape
 from road_lab.taxonomy import FISHEYE_CAMERAS
 from .schema_adapter import compute_edge_zone
 
+from pathlib import Path
+
 _YOLO_MODEL = None
+_LOCAL_YOLO26L = Path(r"D:\06-Learning\AIA-VINGROUP\learning\cvat\models\checkpoints\yolo26l.pt")
 
 
 def _get_yolo():
     global _YOLO_MODEL
     if _YOLO_MODEL is None:
         from ultralytics import YOLO
-        _YOLO_MODEL = YOLO("yolov8n.pt")
+        weights = str(_LOCAL_YOLO26L) if _LOCAL_YOLO26L.exists() else "yolov8n.pt"
+        _YOLO_MODEL = YOLO(weights)
     return _YOLO_MODEL
 
 
@@ -62,7 +66,7 @@ def detect_objects(
     img_bgr: np.ndarray,
     camera: str,
     ignore_mask: np.ndarray,
-    conf_thresh: float = 0.22,
+    conf_thresh: float = 0.28,
 ) -> tuple[list[Shape], list[tuple[float, float, float, float]]]:
     """Detect traffic_light and traffic_sign boxes, plus vehicle boxes for lane/drivable context."""
     h, w = img_bgr.shape[:2]
@@ -70,7 +74,7 @@ def detect_objects(
     device = 0 if torch.cuda.is_available() else "cpu"
     model = _get_yolo()
 
-    res = model.predict(img_bgr, conf=conf_thresh, imgsz=640, device=device, verbose=False)[0]
+    res = model.predict(img_bgr, conf=conf_thresh, imgsz=1280, device=device, verbose=False)[0]
     shapes: list[Shape] = []
     vehicle_boxes: list[tuple[float, float, float, float]] = []
 
