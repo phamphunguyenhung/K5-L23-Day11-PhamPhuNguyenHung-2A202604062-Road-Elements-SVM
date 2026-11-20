@@ -27,19 +27,22 @@ def _get_yolo():
 def _classify_tl_color(crop_bgr: np.ndarray) -> str:
     if crop_bgr.size == 0:
         return "unknown"
-    hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
+    ch, cw = crop_bgr.shape[:2]
+    inner = crop_bgr[int(ch * 0.12) : max(1, int(ch * 0.88)), int(cw * 0.15) : max(1, int(cw * 0.85))]
+    if inner.size == 0:
+        inner = crop_bgr
+    hsv = cv2.cvtColor(inner, cv2.COLOR_BGR2HSV)
     v = hsv[:, :, 2]
     s = hsv[:, :, 1]
     h = hsv[:, :, 0]
-    bright = (v > 140) & (s > 60)
-    if not np.any(bright):
-        return "off" if float(np.mean(v)) < 90 else "unknown"
-    red_px = int(np.sum(bright & ((h < 12) | (h > 165))))
-    yel_px = int(np.sum(bright & (h >= 12) & (h <= 34)))
-    grn_px = int(np.sum(bright & (h >= 40) & (h <= 95)))
-    counts = {"red": red_px, "yellow": yel_px, "green": grn_px}
-    best = max(counts, key=counts.get)
-    return best if counts[best] >= 4 else "unknown"
+    # Active bulb is very bright (v > 200) or saturated bright green/red; yellow housing has lower v (~130-190)
+    red_px = int(np.sum((v > 190) & (s > 70) & ((h < 12) | (h > 165))))
+    grn_px = int(np.sum((v > 180) & (s > 50) & (h >= 38) & (h <= 100)))
+    yel_px = int(np.sum((v > 225) & (s > 90) & (h >= 14) & (h <= 32)))
+    if max(red_px, grn_px, yel_px) < 3:
+        return "off" if float(np.mean(v)) < 110 else "unknown"
+    counts = {"red": red_px, "green": grn_px, "yellow": yel_px}
+    return max(counts, key=counts.get)
 
 
 def _classify_sign_group(crop_bgr: np.ndarray) -> str:
@@ -125,5 +128,26 @@ def detect_objects(
                         },
                     )
                 )
+
+    # Color/shape fallback for green highway information signs (not in COCO)
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    g_mask = (hsv[:, :, 0] >= 48) & (hsv[:, :, 0] <= 95) & (hsv[:, :, 1] >= 75) & (hsv[:, :, 2] >= 35) & (hsv[:, :, 2] <= 145)
+    g_mask[int(h * 0.62) :, :] = False
+    g_mask[ignore_mask] = False
+    u8 = cv2.morphologyEx(g_mask.astype(np.uint8) * 255, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    for c in cv2.findContours(u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]:
+        x, y, bw, bh = cv2.boundingRect(c)
+        rr = cv2.contourArea(c) / max(1, bw * bh)
+        if y > 5 and 18 <= bw <= 220 and 18 <= bh <= 180 and 0.45 <= bw / bh <= 2.8 and rr > 0.78:
+            x1, y1, x2, y2 = float(x), float(y), float(x + bw), float(y + bh)
+            ez = "true" if (is_fisheye and compute_edge_zone(x1, y1, x2, y2, w, h)) else "false"
+            shapes.append(
+                Shape(
+                    label="traffic_sign",
+                    kind="rectangle",
+                    points=[(x1, y1), (x2, y2)],
+                    attributes={"group": "information", "facing": "front", "edge_zone": ez},
+                )
+            )
 
     return shapes, vehicle_boxes
