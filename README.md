@@ -40,3 +40,9 @@ uv run --with pytest==8.3.4 pytest -q
 - [Nguồn dữ liệu và giấy phép](ATTRIBUTION.md).
 
 `lint` chỉ kiểm định dạng file. Nó không so bài của bạn với GT và không cho điểm. Coach chấm bằng `road_check check` hoặc `road_check batch` sau buổi.
+
+## Pipeline tự động & QA (Day 11)
+
+- Chạy toàn bộ pipeline + kiểm thử: `.\scripts\run_all.ps1` (hoặc `bash scripts/run_all.sh`).
+- Tài liệu: [Task Checklist](docs/TASK_CHECKLIST.md) · [Implementation Report](docs/IMPLEMENTATION_REPORT.md) · [Final Audit](docs/FINAL_AUDIT.md) · [Demo Guide](docs/DEMO_GUIDE.md).
+- Dashboard QA & Overlay: `out/qa/index.html`, `out/qa/metrics.json`, `out/qa/failures.csv`, `out/overlays/`.
