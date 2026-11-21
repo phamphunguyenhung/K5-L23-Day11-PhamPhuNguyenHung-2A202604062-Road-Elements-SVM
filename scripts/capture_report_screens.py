@@ -24,6 +24,15 @@ def _extract_lane_xml_snippet() -> str:
     return "\n".join(lines[:20])
 
 
+def _dismiss_toasts(page) -> None:
+    """Ẩn thông báo nổi (vd. 'Could not send logs to the server') trước khi chụp."""
+    page.evaluate(
+        "document.querySelectorAll('.cvat-notification-notice, .ant-notification, .ant-message')"
+        ".forEach(e => e.remove());"
+    )
+    page.wait_for_timeout(300)
+
+
 def main() -> int:
     SHOTS.mkdir(parents=True, exist_ok=True)
     vals = dotenv_values(ROOT / ".env")
@@ -42,16 +51,19 @@ def main() -> int:
         # 1. Project #5 Labels
         page.goto(f"{url}/projects/5", wait_until="networkidle", timeout=20000)
         page.wait_for_timeout(1500)
+        _dismiss_toasts(page)
         page.screenshot(path=str(SHOTS / "01-project-labels.png"))
 
         # 2. Front Job #59 frame 7 (A08)
         page.goto(f"{url}/tasks/60/jobs/59?frame=7", wait_until="networkidle", timeout=25000)
         page.wait_for_timeout(2500)
+        _dismiss_toasts(page)
         page.screenshot(path=str(SHOTS / "02-front-annotated.png"))
 
         # 3. Fisheye Job #60 frame 2 (B03)
         page.goto(f"{url}/tasks/61/jobs/60?frame=2", wait_until="networkidle", timeout=25000)
         page.wait_for_timeout(2500)
+        _dismiss_toasts(page)
         page.screenshot(path=str(SHOTS / "03-fisheye-polyline.png"))
 
         # 4. XML snippet screenshot
